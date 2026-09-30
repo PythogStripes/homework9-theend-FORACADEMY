@@ -1,0 +1,43 @@
+services:
+  web:
+    build: .
+    container_name: hw_final_web
+    restart: unless-stopped          # автоподъём при сбое старта
+    ports:
+      - "8000:8000"
+    environment:
+      # внутри Docker хосты — имена сервисов (перекрывают .env)
+      DATABASE_URL: postgresql+asyncpg://hw:hwpass@db:5432/hwfinal
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: super-secret-change-me
+    depends_on:
+      db:
+        condition: service_healthy   # web стартует только после готовности БД
+      redis:
+        condition: service_started
+
+  db:
+    image: postgres:16-alpine
+    container_name: hw_final_db
+    ports:
+      - "5432:5432"                  # Проброс для локального запуска
+    environment:
+      POSTGRES_USER: hw
+      POSTGRES_PASSWORD: hwpass
+      POSTGRES_DB: hwfinal
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hw -d hwfinal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hw_final_redis
+    ports:
+      - "6379:6379"                  # нужен для локального запуска
+
+volumes:
+  pgdata:
